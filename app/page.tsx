@@ -12,11 +12,19 @@ export default function Home() {
   useEffect(() => {
     // Simula o tempo da splash screen
     const timer = setTimeout(() => {
-      setCurrentScreen('onboarding');
+      // Verifica se já existe endereço salvo
+      const savedAddress = localStorage.getItem('userAddress');
+      if (savedAddress) {
+        // Se já tem endereço, vai direto para o app
+        router.push('/app');
+      } else {
+        // Se não tem endereço, vai para o onboarding
+        setCurrentScreen('onboarding');
+      }
     }, 3000);
 
     return () => clearTimeout(timer);
-  }, []);
+  }, [router]);
 
   const handleAddressComplete = (address: string) => {
     console.log('Endereço recebido:', address);

@@ -1,15 +1,17 @@
 'use client';
 
 import { useState } from 'react';
+import AddressConfirmation from './AddressConfirmation';
 
 interface OnboardingScreenProps {
     onAddressComplete: (address: string) => void;
 }
 
 export default function OnboardingScreen({ onAddressComplete }: OnboardingScreenProps) {
-    const [step, setStep] = useState<'welcome' | 'address'>('welcome');
+    const [step, setStep] = useState<'welcome' | 'address' | 'confirm'>('welcome');
     const [cep, setCep] = useState('');
-    const [address, setAddress] = useState('');
+    const [baseAddress, setBaseAddress] = useState('');
+    const [coordinates, setCoordinates] = useState<{ lat: number; lng: number } | undefined>();
     const [isLoadingGPS, setIsLoadingGPS] = useState(false);
     const [isLoadingCEP, setIsLoadingCEP] = useState(false);
 
@@ -36,9 +38,9 @@ export default function OnboardingScreen({ onAddressComplete }: OnboardingScreen
                     const data = await response.json();
                     if (data.city && data.region) {
                         const ipAddress = `${data.city}, ${data.region} - Brasil`;
-                        setAddress(ipAddress);
+                        setBaseAddress(ipAddress);
                         setIsLoadingGPS(false);
-                        onAddressComplete(ipAddress);
+                        setStep('confirm');
                         return true;
                     }
                 }
@@ -72,10 +74,11 @@ export default function OnboardingScreen({ onAddressComplete }: OnboardingScreen
                             const city = addressParts.city || addressParts.town || addressParts.village || 'São Paulo';
                             const state = addressParts.state || 'SP';
 
-                            const fullAddress = `${street}, ${number} - ${neighborhood}, ${city} - ${state}`;
-                            setAddress(fullAddress);
+                            const fullAddress = `${street} - ${neighborhood}, ${city} - ${state}`;
+                            setBaseAddress(fullAddress);
+                            setCoordinates({ lat: latitude, lng: longitude });
                             setIsLoadingGPS(false);
-                            onAddressComplete(fullAddress);
+                            setStep('confirm');
                         } else {
                             throw new Error('Erro na geocodificação');
                         }
@@ -85,10 +88,10 @@ export default function OnboardingScreen({ onAddressComplete }: OnboardingScreen
                         const ipSuccess = await tryIPLocation();
                         if (!ipSuccess) {
                             // Último fallback - endereço simulado
-                            const mockAddress = 'Rua das Flores, 123 - Centro, São Paulo - SP';
-                            setAddress(mockAddress);
+                            const mockAddress = 'Rua das Flores - Centro, São Paulo - SP';
+                            setBaseAddress(mockAddress);
                             setIsLoadingGPS(false);
-                            onAddressComplete(mockAddress);
+                            setStep('confirm');
                         }
                     }
                 },
@@ -153,10 +156,10 @@ export default function OnboardingScreen({ onAddressComplete }: OnboardingScreen
                         return;
                     }
 
-                    const fullAddress = `${data.logradouro}, ${data.bairro}, ${data.localidade} - ${data.uf}`;
-                    setAddress(fullAddress);
+                    const fullAddress = `${data.logradouro} - ${data.bairro}, ${data.localidade} - ${data.uf}`;
+                    setBaseAddress(fullAddress);
                     setIsLoadingCEP(false);
-                    onAddressComplete(fullAddress);
+                    setStep('confirm');
                 } else {
                     throw new Error('Erro na consulta do CEP');
                 }
@@ -167,6 +170,17 @@ export default function OnboardingScreen({ onAddressComplete }: OnboardingScreen
             }
         }
     };
+
+    if (step === 'confirm') {
+        return (
+            <AddressConfirmation
+                baseAddress={baseAddress}
+                coordinates={coordinates}
+                onConfirm={onAddressComplete}
+                onBack={() => setStep('welcome')}
+            />
+        );
+    }
 
     if (step === 'welcome') {
         return (
@@ -372,7 +386,7 @@ export default function OnboardingScreen({ onAddressComplete }: OnboardingScreen
                                     value={cep}
                                     onChange={handleCEPChange}
                                     placeholder="00000-000"
-                                    className="w-full px-4 py-4 border-2 border-gray-200 rounded-2xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 text-lg font-medium"
+                                    className="w-full px-4 py-4 border-2 border-gray-300 rounded-2xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 text-lg font-medium text-gray-900 placeholder-gray-500 bg-white"
                                     maxLength={9}
                                     autoFocus
                                 />
